@@ -3,10 +3,9 @@ import os
 import telebot
 from dotenv import load_dotenv
 from telebot.types import (
-    BotCommand,
-    ForceReply,
-    InlineKeyboardButton,
+    BotCommand, ForceReply,
     InlineKeyboardMarkup,
+    InlineKeyboardButton,
     KeyboardButton,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
@@ -26,7 +25,7 @@ bot = telebot.TeleBot(TEL_TOKEN)
 bot.set_my_commands(
     [
         BotCommand("/new", "Указать свои имя и город"),
-        BotCommand("/message", "Написать всем землякам"),
+            BotCommand("/message",   "Написать всем землякам"),
         BotCommand("/locations", "Показать все города"),
         BotCommand("/timezones", "Часовые пояса"),
     ]
@@ -43,7 +42,7 @@ def start(message):
 @bot.message_handler(commands=['new'])
 def new(message):
     """Запускает процесс регистрации нового пользователя."""
-    user = activate_user(message.chat.id)
+    user = activate_user(message.chat.id    )
     if user.record:
         bot.send_document(
             message.chat.id,

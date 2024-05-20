@@ -17,9 +17,7 @@ fernet = Fernet(ENCRYPT_KEY)
 
 
 async def get_multiple_api(tokens):
-    """Асинхронная функция для получения ответов от API Практикума по списку
-    предоставленных токенов.
-    """
+    """Асинхронно получить ответы от API Практикума по списку токенов."""
     tasks = []
     async with aiohttp.ClientSession() as session:
         for token, timestamp in tokens:
@@ -41,7 +39,7 @@ async def get_multiple_api(tokens):
 
 
 def get_api_answer(token, timestamp):
-    """Обращается к API Практикума за статусом работы на код-ревью."""
+    """Обратиться к API Практикума за статусом работы на код-ревью."""
     headers = {'Authorization': f'OAuth {token}'}
     payload = {'from_date': timestamp}
     try:
@@ -49,17 +47,18 @@ def get_api_answer(token, timestamp):
             ENDPOINT, headers=headers, params=payload, timeout=3
         )
     except Exception as error:
-        raise ConnectionError(f'API connection error: {error}')
+        msg = f'API connection error: {error}'
+        raise ConnectionError(msg) from error
     return homework_status.json()
 
 
 def encrypt(token):
-    """Шифрует предоставленный токен от API Практикума."""
+    """Зашифровать предоставленный токен от API Практикума."""
     return fernet.encrypt(token.encode()).decode()
 
 
 def decrypt(token):
-    """Дешифрует предоставленный токен от API Практикума."""
+    """Дешифровать предоставленный токен от API Практикума."""
     return fernet.decrypt(token).decode()
 
 
@@ -71,9 +70,7 @@ def check_response(response):
         return False
     if response.get('homeworks') is None:
         return False
-    if not isinstance(response.get('homeworks'), list):
-        return False
-    return True
+    return isinstance(response.get('homeworks'), list)
 
 
 def parse_status(api_answer):

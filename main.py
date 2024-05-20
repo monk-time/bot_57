@@ -35,28 +35,26 @@ bot = telebot.TeleBot(TEL_TOKEN)
 
 
 # Установка команд меню бота
-bot.set_my_commands(
-    [
-        BotCommand("/new", "Указать свои имя и город"),
-        BotCommand("/message", "Написать всем землякам"),
-        BotCommand("/locations", "Показать все города"),
-        BotCommand("/timezones", "Часовые пояса"),
-        BotCommand("/timer", "Таймер учебы"),
-        BotCommand("/review", "Мониторинг код-ревью"),
-    ]
-)
+bot.set_my_commands([
+    BotCommand('/new', 'Указать свои имя и город'),
+    BotCommand('/message', 'Написать всем землякам'),
+    BotCommand('/locations', 'Показать все города'),
+    BotCommand('/timezones', 'Часовые пояса'),
+    BotCommand('/timer', 'Таймер учебы'),
+    BotCommand('/review', 'Мониторинг код-ревью'),
+])
 
 
 # Реакции на глобальные команды бота
 @bot.message_handler(commands=['start', 'help'])
 def start(message):
-    """Выводит стартовое сообщение бота."""
+    """Вывести стартовое сообщение бота."""
     bot.send_message(message.chat.id, REMARKS['intro'], parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['new'])
 def new(message):
-    """Запускает процесс регистрации нового пользователя."""
+    """Запустить регистрацию нового пользователя."""
     user = activate_user(message.chat.id)
     if user.record:
         bot.send_document(
@@ -84,17 +82,15 @@ def new(message):
 
 @bot.message_handler(commands=['message'])
 def message(message):
-    """Проверяет наличие земляков и позволяет написать им сообщение
-    после подтверждения.
-    """
+    """Найти земляков и позволить написать им сообщение после подтверждения."""
     user = activate_user(message.chat.id)
     if not user.record:
         answer = 'Сначала укажите ваш город. Город не определен.'
         bot.send_message(message.chat.id, answer)
         return
 
-    locals = user.get_locals()
-    if not locals:
+    local_users = user.get_local_users()
+    if not local_users:
         answer = (
             f'{user.name}, в вашем городе пока зарегистрированы '
             'только вы. Ждем пополнения.'
@@ -102,11 +98,11 @@ def message(message):
         bot.send_message(message.chat.id, answer)
         return
 
-    num = len(locals)
+    num = len(local_users)
     if user.country == 'Россия':
-        answer = REMARKS['locals'].format(user.city, num)
+        answer = REMARKS['local_users'].format(user.city, num)
     else:
-        answer = REMARKS['locals_ino'].format(user.country, num)
+        answer = REMARKS['local_users_foreign'].format(user.country, num)
     send_message = InlineKeyboardMarkup()
     send_message.add(
         InlineKeyboardButton(
@@ -123,12 +119,12 @@ def message(message):
 
 @bot.message_handler(commands=['locations'])
 def get_all_locations(message):
-    """Выводит географию всех зарегистрированных пользователей бота."""
+    """Вывести географию всех зарегистрированных пользователей бота."""
     db = DataBase(message.chat.id)
     ru = db.get_locations_ru()
     ino = db.get_locations_ino()
     db.close()
-    num = sum([i[1] for i in ru]) + sum([i[1] for i in ino])
+    num = sum(i[1] for i in ru) + sum(i[1] for i in ino)
     header_ru = (
         '_География студентов когорты 57 в этом боте_ '
         f'_(всего {num} чел.)_\n'
@@ -167,15 +163,13 @@ def get_all_locations(message):
 
 @bot.message_handler(commands=['timezones'])
 def get_all_timezones(message):
-    """Выводит часовые пояса всех зарегистрированных пользователей бота."""
+    """Вывести часовые пояса всех зарегистрированных пользователей бота."""
     db = DataBase(message.chat.id)
     time = db.get_timezones()
     db.close()
     utc_shift = 3
     if time:
-        utc_shift = sum([i[1] * i[2] for i in time]) / sum(
-            [i[2] for i in time]
-        )
+        utc_shift = sum(i[1] * i[2] for i in time) / sum(i[2] for i in time)
     moscow_shift = utc_shift - 3
     header = (
         '_Часовые пояса студентов когорты 57 в этом боте_\n'
@@ -186,12 +180,10 @@ def get_all_timezones(message):
     )
     timezone_stats = 'Пока никого нет'
     if time:
-        timezone_stats = '\n'.join(
-            [
-                f'*{zone}* _(UTC +{utc} ч.)_: `{people}`'
-                for zone, utc, people in time
-            ]
-        )
+        timezone_stats = '\n'.join([
+            f'*{zone}* _(UTC +{utc} ч.)_: `{people}`'
+            for zone, utc, people in time
+        ])
     answer = header + timezone_stats
     bot.send_message(message.chat.id, answer, parse_mode='Markdown')
     logger.warning(log(message, 'Запрос часовых поясов пользователей'))
@@ -199,7 +191,7 @@ def get_all_timezones(message):
 
 @bot.message_handler(content_types=['location'])
 def location(message):
-    """Обрабатывает геолокацию пользователя в случае отправки."""
+    """Обработать геолокацию пользователя в случае отправки."""
     if not message.location:
         return
     user = activate_user(message.chat.id)
@@ -220,8 +212,9 @@ def location(message):
 
 @bot.message_handler(commands=['timer'])
 def timer(message):
-    """Позволяет выбрать текущий спринт для запуска таймера учета учебного
-    времени и выводит статистику по записанному времени.
+    """Запустить таймер учета учебного времени для текущего спринта.
+
+    Выводит статистику по записанному времени.
     """
     user = activate_user(message.chat.id)
     if not user.record:
@@ -232,14 +225,12 @@ def timer(message):
         bot.send_message(message.chat.id, 'У вас уже запущен таймер.')
         return
     sprint_select = InlineKeyboardMarkup(row_width=2)
-    sprint_select.add(
-        *[
-            InlineKeyboardButton(
-                text=f'Спринт № {spr}', callback_data=f'sprint {spr}'
-            )
-            for spr in range(3, 17)
-        ]
-    )
+    sprint_select.add(*[
+        InlineKeyboardButton(
+            text=f'Спринт № {spr}', callback_data=f'sprint {spr}'
+        )
+        for spr in range(3, 17)
+    ])
     sprint_select.add(
         InlineKeyboardButton(text='Спрятать таймер', callback_data='no_timer')
     )
@@ -255,12 +246,10 @@ def timer(message):
         '----------------------------------------\n'
     )
     if all_sprints:
-        sprints = '\n'.join(
-            [
-                f'*Спринт №{spr}*:  `{total_time}`'
-                for spr, total_time in all_sprints
-            ]
-        )
+        sprints = '\n'.join([
+            f'*Спринт №{spr}*:  `{total_time}`'
+            for spr, total_time in all_sprints
+        ])
         answer = header + sprints
     bot.send_message(
         message.chat.id,
@@ -272,7 +261,7 @@ def timer(message):
 
 @bot.message_handler(commands=['review'])
 def review_check(message):
-    """Проверяет последний статус код-ревью. Запускает мониторинг статусов."""
+    """Проверить последний статус код-ревью. Запускает мониторинг статусов."""
     user = activate_user(message.chat.id)
     if not user.record:
         answer = 'Сначала укажите ваш город. Город не определен.'
@@ -321,7 +310,7 @@ def review_check(message):
 # Реакции на срабатывание инлайн-клавиатур бота
 @bot.callback_query_handler(func=lambda call: call.data == 'name')
 def provide_name(call):
-    """Обрабатывает заполнение имени пользователя."""
+    """Обработать заполнение имени пользователя."""
     message = 'Впишите свое имя в поле ответа.'
     reply = ForceReply(input_field_placeholder='Меня зовут...')
     bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -330,7 +319,7 @@ def provide_name(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'geo')
 def provide_geo(call):
-    """Обрабатывает заполнение города пользователя."""
+    """Обработать заполнение города пользователя."""
     message = 'Впишите свой город в поле для ответа.'
     reply = ForceReply(input_field_placeholder='Мой город...')
     bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -339,11 +328,11 @@ def provide_geo(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'location')
 def provide_location(call):
-    """Формирует кнопку отправки геолокации."""
+    """Сформировать кнопку отправки геолокации."""
     message = REMARKS['location']
     keyboard = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
     button_geo = KeyboardButton(
-        text="Отправить местоположение", request_location=True
+        text='Отправить местоположение', request_location=True
     )
     keyboard.add(button_geo)
     bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -357,7 +346,7 @@ def provide_location(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'delete')
 def delete(call):
-    """Обрабатывает отмену сохранения информации в БД."""
+    """Обработать отмену сохранения информации в БД."""
     message = 'Операция не завершена. Попробуйте снова.'
     bot.delete_message(call.message.chat.id, call.message.message_id)
     bot.send_message(call.message.chat.id, message)
@@ -365,7 +354,7 @@ def delete(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'save')
 def save_user(call):
-    """Обрабатывает сохранение информации о пользователе в БД."""
+    """Обработать сохранение информации о пользователе в БД."""
     user = activate_user(call.message.chat.id)
     if user.save_user():
         bot.send_document(
@@ -390,7 +379,7 @@ def save_user(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'callall')
 def call_all(call):
-    """Обрабатывает отправку сообщения всем землякам."""
+    """Обработать отправку сообщения всем землякам."""
     message = 'Впишите свое сообщение. Его увидят все ваши земляки в чате.'
     reply = ForceReply(input_field_placeholder='Сообщение...')
     bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -399,7 +388,7 @@ def call_all(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'answerall')
 def answer_all(call):
-    """Обрабатывает ответ на сообщение земляка."""
+    """Обработать ответ на сообщение земляка."""
     message = 'Впишите свое сообщение. Его увидят все ваши земляки в чате.'
     reply = ForceReply(input_field_placeholder='Сообщение...')
     bot.send_message(call.message.chat.id, message, reply_markup=reply)
@@ -408,7 +397,7 @@ def answer_all(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('sprint'))
 def show_timer(call):
-    """Показывает клавиатуру с кнопкой таймера для выбранного спринта."""
+    """Показать клавиатуру с кнопкой таймера для выбранного спринта."""
     user = activate_user(call.message.chat.id)
     if user.timer:
         return
@@ -416,7 +405,7 @@ def show_timer(call):
     timer = ReplyKeyboardMarkup(
         row_width=1, resize_keyboard=True, one_time_keyboard=True
     )
-    timer.add(f"Запустить таймер: cпринт № {sprint_num}")
+    timer.add(f'Запустить таймер: cпринт № {sprint_num}')
     bot.delete_message(call.message.chat.id, call.message.message_id)
     bot.send_message(
         call.message.chat.id,
@@ -427,7 +416,7 @@ def show_timer(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'no_timer')
 def hide_timer(call):
-    """Прячет клавиатуру запуска таймера."""
+    """Спрятать клавиатуру запуска таймера."""
     user = activate_user(call.message.chat.id)
     if user.timer:
         return
@@ -441,7 +430,7 @@ def hide_timer(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'monitor_on')
 def monitor_on(call):
-    """Реактивирует ранее отключенный мониторинг код-ревью."""
+    """Реактивировать ранее отключенный мониторинг код-ревью."""
     db = DataBase(call.message.chat.id)
     credentials = db.token_exist()
     api_answer = review.get_api_answer(review.decrypt(credentials[1]), 0)
@@ -454,7 +443,7 @@ def monitor_on(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'monitor_off')
 def monitor_off(call):
-    """Приостанавливает активный мониторинг код-ревью."""
+    """Приостановить активный мониторинг код-ревью."""
     db = DataBase(call.message.chat.id)
     db.token_time_update(None)
     db.close()
@@ -465,7 +454,7 @@ def monitor_off(call):
 
 # Вынесенные функции бота
 def submit_user(message):
-    """Подтверждает первичное сохранение информации о пользователе в БД."""
+    """Подтвердить первичное сохранение информации о пользователе в БД."""
     user = activate_user(message.chat.id)
     save_user = InlineKeyboardMarkup()
     save_user.add(
@@ -485,26 +474,23 @@ def submit_user(message):
 
 
 def send_all(message):
-    """Отправляет сообщение всем землякам пользователя."""
+    """Отправить сообщение всем землякам пользователя."""
     user = activate_user(message.chat.id)
-    locals = user.get_locals()
-    if not locals:
+    local_users = user.get_local_users()
+    if not local_users:
         bot.send_message(
             chat_id=message.chat.id,
             text='Упс, что-то пошло не так. Не вижу ваших земляков.',
         )
         return
-    if user.country == 'Россия':
-        place = user.city
-    else:
-        place = user.country
+    place = user.city if user.country == 'Россия' else user.country
     send_message = InlineKeyboardMarkup()
     send_message.add(
         InlineKeyboardButton(
             text='Ответить всем в чате земляков', callback_data='answerall'
         )
     )
-    for loc in locals:
+    for loc in local_users:
         bot.send_message(
             chat_id=loc,
             text=f'_Ваш земляк_ *{user.name}* _пишет_:\n{message.text}',
@@ -514,7 +500,7 @@ def send_all(message):
     bot.send_message(
         chat_id=message.chat.id,
         text=(
-            f'Сообщение отправлено. Получатели: *{len(locals)}* чел.\n'
+            f'Сообщение отправлено. Получатели: *{len(local_users)}* чел.\n'
             f'Локация: {place}'
         ),
         parse_mode='Markdown',
@@ -523,11 +509,11 @@ def send_all(message):
 
 
 def alert_all(user):
-    """Информирует о появлении нового земляка."""
-    locals = user.get_locals()
-    if not locals:
+    """Информировать о появлении нового земляка."""
+    local_users = user.get_local_users()
+    if not local_users:
         return
-    for loc in locals:
+    for loc in local_users:
         bot.send_document(
             chat_id=loc,
             document=(
@@ -536,14 +522,14 @@ def alert_all(user):
             ),
             caption=(
                 'Среди ваших земляков пополнение. Приветствуйте, '
-                f'*{user.name}*. Теперь вас *{len(locals)+1}* чел.'
+                f'*{user.name}*. Теперь вас *{len(local_users) + 1}* чел.'
             ),
             parse_mode='Markdown',
         )
 
 
 def new_timer(message):
-    """Инициирует запись о времени старта нового таймера учебы в БД."""
+    """Инициировать запись о времени старта нового таймера учебы в БД."""
     user = activate_user(message.chat.id)
     if user.timer:
         return
@@ -562,14 +548,14 @@ def new_timer(message):
     stop_timer = ReplyKeyboardMarkup(
         row_width=1, resize_keyboard=True, one_time_keyboard=True
     )
-    stop_timer.add(f"Остановить таймер (запущен в {time})")
+    stop_timer.add(f'Остановить таймер (запущен в {time})')
     bot.send_message(
         message.chat.id, answer, parse_mode='Markdown', reply_markup=stop_timer
     )
 
 
-def end_timer(user_id, forcibly=False):
-    """Останавливает запущенный таймер, записывая время окончания в БД."""
+def end_timer(user_id, *, forcibly=False):
+    """Остановить запущенный таймер, записывая время окончания в БД."""
     user = activate_user(user_id)
     if not user.timer:
         bot.send_message(
@@ -580,8 +566,8 @@ def end_timer(user_id, forcibly=False):
         return
     db = DataBase(user_id)
     db.end_timer()
-    id = db.last_timer()[0]
-    sprint, start, duration = db.last_timer_duration(id)
+    timer_id = db.last_timer()[0]
+    sprint, start, duration = db.last_timer_duration(timer_id)
     sprint_time = db.sprint_time(sprint)[0]
     db.close()
     user.timer = None
@@ -596,20 +582,18 @@ def end_timer(user_id, forcibly=False):
     timer = ReplyKeyboardMarkup(
         row_width=1, resize_keyboard=True, one_time_keyboard=True
     )
-    timer.add(f"Запустить таймер: cпринт № {sprint}")
+    timer.add(f'Запустить таймер: cпринт № {sprint}')
     bot.send_message(
         user_id, answer, parse_mode='Markdown', reply_markup=timer
     )
 
 
 def new_token(message):
-    """Записывает новый токен Яндекс-Практикума в БД для мониторинга
-    код-ревью статусов.
-    """
+    """Записать новый токен в БД для мониторинга статусов код-ревью."""
     if not message.text.isascii():
         bot.send_message(
             message.chat.id,
-            'Это не токен \N{smirking face}. Попробуйте еще раз.',
+            'Это не токен \N{SMIRKING FACE}. Попробуйте еще раз.',
         )
         return
 
@@ -634,9 +618,10 @@ def new_token(message):
 
 
 def monitoring():
-    """Раз в минуту проверяет БД на предмет запущенных таймеров. Если
-    пользователь занимается больше часа - высылает предупреждение об отдыхе.
-    Если больше 8 часов - принудительно закрывает таймер.
+    """Раз в минуту проверить БД на предмет запущенных таймеров.
+
+    Если пользователь занимается больше часа - предупредить об отдыхе.
+    Если больше 8 часов - принудительно закрыть таймер.
     """
     one_minute_monitor = Timer(60.0, monitoring)
     one_minute_monitor.start()
@@ -661,9 +646,10 @@ def monitoring():
 
 
 def monitoring_api():
-    """Раз в три минуты обращается к API Яндекс Практикума за статусом работ,
-    отправленных на код-ревью. Делает это для всех сохраненных в БД токенов.
-    В случае обновления статуса - сообщает об этом и записывает время
+    """Раз в три минуты обратиться к API ЯП за статусом работ на код-ревью.
+
+    Сделать это для всех сохраненных в БД токенов.
+    В случае обновления статуса - сообщить об этом и записать время
     последнего обновления в БД.
     """
     three_minute_monitor = Timer(180.0, monitoring_api)
@@ -672,9 +658,11 @@ def monitoring_api():
     active_tokens = db.all_active_tokens()
     db.close()
     if active_tokens:
-        line = [(review.decrypt(key), time) for id, time, key in active_tokens]
+        line = [
+            (review.decrypt(key), time) for _id, time, key in active_tokens
+        ]
         api_answers = asyncio.run(review.get_multiple_api(line))
-        alert_list = zip(list(zip(*active_tokens))[0], api_answers)
+        alert_list = zip(next(zip(*active_tokens)), api_answers)
         for user_id, api_answer in alert_list:
             if not api_answer['homeworks']:
                 continue
@@ -692,10 +680,12 @@ def monitoring_api():
 
 
 # Реакции на текстовые сообщения боту
-@bot.message_handler(content_types=["text"])
+@bot.message_handler(content_types=['text'])
 def handle_text(message):
-    """Обрабатывает все текстовые сообщения боту, перенаправляет заполнение
-    имени, города при регистрации, отправку сообщения землякам.
+    """Обработать все текстовые сообщения боту.
+
+    Перенаправить заполнение имени, города при регистрации,
+    отправку сообщения землякам.
     """
     if not message.reply_to_message:
         if message.text.startswith('Запустить таймер: cпринт №'):
@@ -704,11 +694,11 @@ def handle_text(message):
             end_timer(message.chat.id)
         elif message.text.lower() == 'лог':
             if message.chat.id == int(ADMIN_ID):
-                with open("db/logs.log") as log_file:
+                with open('db/logs.log', encoding='utf-8') as log_file:
                     bot.send_document(message.chat.id, log_file)
         elif message.text.lower() == 'ошибки':
             if message.chat.id == int(ADMIN_ID):
-                with open("db/errors.log") as log_file:
+                with open('db/errors.log', encoding='utf-8') as log_file:
                     bot.send_document(message.chat.id, log_file)
         else:
             bot.send_message(
@@ -720,9 +710,7 @@ def handle_text(message):
 
 
 def handle_force_answers(message):
-    """Обрабатывает ответы на обязательные вопросы от бота, такие как
-    первичное заполнение анкетных данных.
-    """
+    """Обработать ответы на обязательные вопросы от бота."""
     user = activate_user(message.chat.id)
     operation = message.reply_to_message.text
     if operation.startswith('Впишите свое имя') and not user.record:

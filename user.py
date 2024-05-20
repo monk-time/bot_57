@@ -2,11 +2,11 @@ from db import DataBase
 
 
 class User:
-    """Класс Пользователь позволяет создавать объекты, ассоциированные с
-    каждым клиентом бота. Содержит в себе информацию о пользователе: имя,
-    город, страну, название и смещение часового пояса. Кроме того, может
-    хранить данные с идентификаторами земляков пользователя, а также флаг
-    о том, что данные пользователя, записаны в БД.
+    """Клиент бота.
+
+    Содержит информацию о пользователе: имя, город, страну, название
+    и смещение часового пояса. Может хранить идентификаторы земляков
+    пользователя, а также флаг о том, что данные пользователя записаны в БД.
     """
 
     list_of_users = set()
@@ -17,7 +17,7 @@ class User:
     def __init__(
         self,
         user_id,
-        locals=None,
+        local_users=None,
         name=None,
         city=None,
         country=None,
@@ -27,7 +27,7 @@ class User:
         timer=None,
     ):
         self.id = user_id
-        self.locals = locals
+        self.local_users = local_users
         self.name = name
         self.city = city
         self.country = country
@@ -44,7 +44,7 @@ class User:
         return str(self.id)
 
     def load_from_db(self):
-        """Загружает информацию о сохраненном пользователе из БД."""
+        """Загрузить информацию о сохраненном пользователе из БД."""
         db = DataBase(self.id)
         (
             self.name,
@@ -60,7 +60,7 @@ class User:
         db.close()
 
     def save_user(self):
-        """Сохраняет информацию о пользователе в БД."""
+        """Сохранить информацию о пользователе в БД."""
         db = DataBase(self.id)
         if not db.check_user_exist() and self.timezone:
             db.create_user(
@@ -76,25 +76,25 @@ class User:
         db.close()
         return False
 
-    def get_locals(self):
-        """Получает список земляков пользователя, проживающих в том же городе
-        в случае с Россией или той же стране.
-        """
+    def get_local_users(self):
+        """Получить список земляков из того же города России или страны."""
         db = DataBase(self.id)
         if self.country == 'Россия':
-            locals = db.get_local_users(self.city)
+            local_users = db.get_local_users(self.city)
         else:
-            locals = db.get_local_users_foreign(self.country)
-        if self.id in locals:
-            locals.remove(self.id)
-        self.locals = locals
+            local_users = db.get_local_users_foreign(self.country)
+        if self.id in local_users:
+            local_users.remove(self.id)
+        self.local_users = local_users
         db.close()
-        return self.locals
+        return self.local_users
 
 
 def activate_user(user_id):
-    """Возвращает объект класса Пользователь. Если соответствующего объекта
-    нет в памяти, создает его и загружает связанные данные из БД.
+    """Получить объект класса Пользователь.
+
+    Если нужного объекта нет в памяти, создать его и
+    загрузить связанные данные из БД.
     """
     user = next(
         (obj for obj in globals()['User'].list_of_users if obj.id == user_id),

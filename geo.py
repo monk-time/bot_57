@@ -6,11 +6,12 @@ from timezonefinder import TimezoneFinder
 
 
 def check_city(city):
-    """Проверяет существование введенного пользователем города. Если город
-    существует, возвращает страну, полное название города, часовой пояс и
-    часовое смещение относительно UTC.
+    """Проверить существование введенного пользователем города.
+
+    Если город существует, верруть страну, полное название города,
+    часовой пояс и часовое смещение относительно UTC.
     """
-    geolocator = Nominatim(user_agent="test_bot")
+    geolocator = Nominatim(user_agent='test_bot')
     geo_location = geolocator.geocode(city)
     if geo_location is None:
         return (False, False, False, False)
@@ -22,7 +23,8 @@ def check_city(city):
 
 
 def coordinates_to_city(latitude, longitude):
-    """Трансформирует координаты, полученные по геолокации в название города.
+    """Трансформировать координаты, полученные по геолокации в название города.
+
     Возвращает страну, полное название города, часовой пояс и
     часовое смещение относительно UTC.
     """
@@ -32,29 +34,25 @@ def coordinates_to_city(latitude, longitude):
 
 
 def time_offset(timezone):
-    """Высчитывает часовое смещение относительно UTC для представленного
-    часового пояса.
-    """
+    """Высчитать часовое смещение относительно UTC для часового пояса."""
     utc_offset = dt.datetime.now(pytz.timezone(timezone)).strftime('%z')
     return int(utc_offset[:-2])
 
 
 def local_time(timezone, time=None):
-    """Конвертирует время UTC в локальное время пользователя с учетом его
-    часового пояса.
-    """
+    """Конвертировать время UTC в локальное время пользователя."""
     if not time:
         time = dt.datetime.utcnow()
     else:
-        time = dt.datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
+        time = dt.datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
     local = time.replace(tzinfo=pytz.UTC).astimezone(pytz.timezone(timezone))
     return local.strftime('%H-%M')
 
 
 def timer_alert(time):
-    """Проверяет запущенные таймеры на превышение времени."""
+    """Проверить запущенные таймеры на превышение времени."""
     time_now = dt.datetime.utcnow()
-    time_start = dt.datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
+    time_start = dt.datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
     time_dif = time_now - time_start
     if time_dif.total_seconds() > 28800:
         return 'close'
@@ -64,10 +62,10 @@ def timer_alert(time):
 
 
 def find_location(latitude, longitude):
-    """Предоставляет страну, город, часовой пояс для заданных координат."""
-    geolocator = Nominatim(user_agent="test_bot")
+    """Получить страну, город и часовой пояс для заданных координат."""
+    geolocator = Nominatim(user_agent='test_bot')
     political_location = geolocator.reverse(
-        f"{latitude},{longitude}", language='ru'
+        f'{latitude},{longitude}', language='ru'
     )
     address = political_location.raw['address']
     country = address['country']
@@ -78,17 +76,18 @@ def find_location(latitude, longitude):
     elif address.get('village') is not None:
         place = address.get('village')
     else:
-        place = "Ближайшее место не определено"
+        place = 'Ближайшее место не определено'
     obj = TimezoneFinder()
     timezone = obj.timezone_at(lng=longitude, lat=latitude)
     return country, place, timezone
 
 
 def map_users(list_of_locations):
-    """Генерирует географическую карту расположения пользователей бота
-    через API Яндекс.Карт. Возвращает ссылку на карту, в которой каждая
-    геометка сопровождается числом проживающих там пользователей. Всего
-    возвращает две карты - мировую и европейской части РФ.
+    """Сгенерировать геокарту расположения пользователей через API Яндекс.Карт.
+
+    Возвращает ссылку на карту, в которой каждая геометка сопровождается
+    числом проживающих там пользователей. Всего возвращает две карты -
+    мировую и европейской части РФ.
     """
     url = 'https://static-maps.yandex.ru/1.x/?lang=ru_RU&l=map&pt='
     url_eu = (
@@ -96,7 +95,7 @@ def map_users(list_of_locations):
         '&bbox=27.9,44.5~62.8,62.5&&pt='
     )
     for city, num in list_of_locations:
-        geolocator = Nominatim(user_agent="test_map_bot")
+        geolocator = Nominatim(user_agent='test_map_bot')
         geo_location = geolocator.geocode(city)
         latitude = geo_location.latitude
         longitude = geo_location.longitude

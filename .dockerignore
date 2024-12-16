@@ -1,9 +1,6 @@
 .env
-.venv 
+.venv
 __pycache__
 *.sqlite3
 *.sqlite
-dev-requirements.txt
 .github
-.flake8
-pyproject.toml
